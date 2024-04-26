@@ -177,6 +177,13 @@ def add_model_arguments(parser: argparse.ArgumentParser):
         help="Unmasked dimensions in the encoders, relates to augmentation during training.  "
         "A single int or comma-separated list.  Must be <= each corresponding encoder_dim.",
     )
+    
+    parser.add_argument(
+        "--feature-dim",
+        type=int,
+        default=80,
+        help="Dim of fbank feature.",
+    )
 
     parser.add_argument(
         "--cnn-module-kernel",
@@ -196,7 +203,8 @@ def add_model_arguments(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--sample-rate",
         type=float,
-        default=16000,
+        default=100,
+        help="Change to frame rate"
     )
 
     # masking
@@ -575,8 +583,8 @@ def get_parser():
     parser.add_argument(
         "--min-keep-size",
         type=float,
-        default=32000,
-        help="exclude sample longer less than this.",
+        default=200,
+        help="exclude sample less than this.",
     )
 
     parser.add_argument(
@@ -802,7 +810,7 @@ def compute_loss(
 
     with torch.set_grad_enabled(is_training):
         loss, num_masked_tokens, logging_output = model(
-            source=audio, target_list=[kmeans], padding_mask=padding_mask
+            source=features, target_list=[kmeans], padding_mask=padding_mask
         )
 
     assert loss.requires_grad == is_training
@@ -1165,10 +1173,7 @@ def run(rank, world_size, args):
         # You should use ../local/display_manifest_statistics.py to get
         # an utterance duration distribution for your dataset to select
         # the threshold
-        if (
-            c.duration < params.min_keep_size / params.sample_rate
-            or c.duration > params.max_keep_size / params.sample_rate
-        ):
+        if (c.duration < 2):
             logging.warning(
                 f"Exclude cut with ID {c.id} from training. Duration: {c.duration}"
             )

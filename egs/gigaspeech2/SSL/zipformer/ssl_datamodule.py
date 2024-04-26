@@ -76,7 +76,7 @@ class LibriSpeechDataModule:
         group.add_argument(
             "--manifest-dir",
             type=Path,
-            default=Path("data/kmeans"),
+            default=Path("/data_a100/userhome/yangb/data/librispeech_embed_kms500"),
             help="Path to directory with train/valid/test cuts.",
         )
         group.add_argument(
@@ -142,7 +142,6 @@ class LibriSpeechDataModule:
         random_crop: bool = True,
         pad_audio: bool = False,
         num_classes: list = [504],
-        do_normalize: bool = True,
         sampler_state_dict: Optional[Dict[str, Any]] = None,
     ) -> DataLoader:
         """
@@ -160,7 +159,6 @@ class LibriSpeechDataModule:
             random_crop=random_crop,
             pad_audio=pad_audio,
             num_classes=num_classes,
-            do_normalize=do_normalize,
         )
 
         if self.args.bucketing_sampler:
@@ -209,8 +207,7 @@ class LibriSpeechDataModule:
         label_rate: float = 50,
         random_crop: bool = True,
         pad_audio: bool = False,
-        num_classes: list = [504],
-        do_normalize: bool = True,
+        num_classes: list = [504]
     ) -> DataLoader:
         logging.info("About to create dev dataset")
         validate = HubertDataset(
@@ -220,7 +217,6 @@ class LibriSpeechDataModule:
             random_crop=random_crop,
             pad_audio=pad_audio,
             num_classes=num_classes,
-            do_normalize=do_normalize,
         )
         valid_sampler = DynamicBucketingSampler(
             cuts_valid,
@@ -246,7 +242,6 @@ class LibriSpeechDataModule:
         random_crop: bool = True,
         pad_audio: bool = False,
         num_classes: list = [504],
-        do_normalize: bool = True,
     ) -> DataLoader:
         logging.debug("About to create test dataset")
         test = HubertDataset(
@@ -255,7 +250,6 @@ class LibriSpeechDataModule:
             random_crop=random_crop,
             pad_audio=pad_audio,
             num_classes=num_classes,
-            do_normalize=do_normalize,
         )
         sampler = DynamicBucketingSampler(
             cuts,

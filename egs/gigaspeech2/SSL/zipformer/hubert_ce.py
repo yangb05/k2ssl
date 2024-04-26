@@ -234,16 +234,18 @@ class HubertModel(nn.Module):
         cfg,
     ) -> None:
         super().__init__()
-        self.embed = feature_enc_layers[-1][0]
+        self.embed = _to_int_tuple(cfg.encoder_dim)[0]
 
         self.encoder_embed = Conv2dSubsampling(
             in_channels=cfg.feature_dim,
             out_channels=_to_int_tuple(cfg.encoder_dim)[0],
             dropout=ScheduledFloat((0.0, 0.3), (20000.0, 0.1)),
         )
+        # feature_ds_rate of Conv2dSubsampling
+        feature_ds_rate = 2
         self.feat2tar_ratio = (
             cfg.label_rate * feature_ds_rate / cfg.sample_rate
-        )  # TODO feature_ds_rate 320
+        )
         encoder_input_dim = _to_int_tuple(cfg.encoder_dim)[0]
         encoder_output_dim = max(_to_int_tuple(cfg.encoder_dim))
 
@@ -344,8 +346,8 @@ class HubertModel(nn.Module):
 
         return x, mask_indices
 
-    def forward_features(self, source: torch.Tensor) -> torch.Tensor:
-        features = self.encoder_embed(source)
+    def forward_features(self, x: torch.Tensor, x_lens: torch.Tensor) -> torch.Tensor:
+        features, _ = self.encoder_embed(x, x_lens)
         return features
 
     def forward_targets(
@@ -385,7 +387,8 @@ class HubertModel(nn.Module):
         output_layer: Optional[int] = None,
     ):
         """output layer is 1-based"""
-        features = self.forward_features(source)
+        features = self.forward_features(source, (~padding_mask).sum(dim=-1))
+        features = features.transpose(1, 2)
         if target_list is not None:
             features, target_list = self.forward_targets(features, target_list)
 
@@ -413,7 +416,7 @@ class HubertModel(nn.Module):
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
         x = x.transpose(0, 1)
-        x, x_lens = self.encoder(x, ~padding_mask.sum(dim=-1))
+        x, x_lens = self.encoder(x, (~padding_mask).sum(dim=-1))
         x = x.transpose(0, 1)
 
         if features_only:

@@ -2,11 +2,11 @@ export CUDA_VISIBLE_DEVICES="2,3,4,5,6,7"
 
 ./zipformer/pretrain.py \
   --world-size 6 \
-  --num-epochs 351 \
+  --num-epochs 100 \
   --start-epoch 1 \
   --use-fp16 1 \
-  --exp-dir zipformer/exp_pretrain_librispeech \
-  --max-duration 2000 \
+  --exp-dir zipformer/exp_pretrain_vietnamese \
+  --max-duration 1500 \
   --accum-grad 1 \
   --do-normalize 0 \
   --mask-prob 0.8 \

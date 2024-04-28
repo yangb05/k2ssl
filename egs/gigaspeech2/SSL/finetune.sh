@@ -1,14 +1,15 @@
+export CUDA_VISIBLE_DEVICES="2,3,4,5,6,7"
+
 ./zipformer/finetune.py \
   --world-size 6 \
-  --num-epochs 100 \
+  --num-epochs 50 \
   --start-epoch 1 \
   --use-fp16 1 \
-  --exp-dir zipformer/exp_finetune_librispeech \
-  --pretrained-dir zipformer/exp_pretrain/epoch-999.pt \
-  --full-libri 0 \
+  --exp-dir zipformer/exp_finetune_vietnamese \
+  --bpe-model data/lang_bpe_10000/bpe.model \
+  --pretrained-dir zipformer/exp_pretrain_vietnamese/epoch-100.pt \
   --max-duration 600 \
   --accum-grad 1 \
-  --do-normalize 0 \
   --mask-prob 0.65 \
   --mask-channel-prob 0.5 \
   --mask-channel-length 64 \

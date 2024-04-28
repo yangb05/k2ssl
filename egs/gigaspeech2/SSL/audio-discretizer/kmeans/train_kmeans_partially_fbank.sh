@@ -1,5 +1,5 @@
 num=500
-cut_file="/mgData2/yangb/icefall/egs/vietnamese/ASR/data/fbank/vietnamese_cuts_train.jsonl.gz"
+cut_file="/mgData2/yangb/icefall/egs/vietnamese/ASR/data/fbank/vietnamese_cuts_train_no_perturb.jsonl.gz"
 output_dir="data/vietnamese_fbank_kms500"
 
 . /mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/audio-discretizer/utils/parse_options.sh || exit 1

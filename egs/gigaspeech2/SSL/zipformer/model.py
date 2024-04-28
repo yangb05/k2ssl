@@ -111,7 +111,7 @@ class AsrModel(nn.Module):
         """Compute encoder outputs.
         Args:
           x:
-            A 2-D tensor of shape (N, T).
+            A 3-D tensor of shape (N, T, C).
 
         Returns:
           encoder_out:
@@ -122,11 +122,13 @@ class AsrModel(nn.Module):
         if padding_mask is None:
             padding_mask = torch.zeros_like(x, dtype=torch.bool)
 
-        encoder_out, padding_mask = self.encoder.extract_features(
+        encoder_outputs = self.encoder(
             source=x,
             padding_mask=padding_mask,
             mask=self.encoder.training,
+            features_only=True
         )
+        encoder_out, padding_mask = encoder_outputs['x'], encoder_outputs['padding_mask']
         encoder_out_lens = torch.sum(~padding_mask, dim=1)
         assert torch.all(encoder_out_lens > 0), encoder_out_lens
 
@@ -280,7 +282,7 @@ class AsrModel(nn.Module):
         """
         Args:
           x:
-            A 2-D tensor of shape (N, T).
+            A 3-D tensor of shape (N, T, C).
           y:
             A ragged tensor with 2 axes [utt][label]. It contains labels of each
             utterance.
@@ -303,7 +305,7 @@ class AsrModel(nn.Module):
               lm_scale * lm_probs + am_scale * am_probs +
               (1-lm_scale-am_scale) * combined_probs
         """
-        assert x.ndim == 2, x.shape
+        assert x.ndim == 3, x.shape
         assert y.num_axes == 2, y.num_axes
 
         assert x.size(0) == y.dim0, (x.shape, y.dim0)

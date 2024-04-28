@@ -57,7 +57,7 @@ import sentencepiece as spm
 import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
-from asr_datamodule import LibriSpeechAsrDataModule
+from asr_datamodule import VietnameseAsrDataModule
 from decoder import Decoder
 from hubert_ce import HubertModel
 from joiner import Joiner
@@ -87,6 +87,7 @@ from icefall.utils import (
     get_parameter_groups_with_lrs,
     setup_logger,
     str2bool,
+    make_pad_mask,
 )
 
 LRSchedulerType = Union[torch.optim.lr_scheduler._LRScheduler, optim.LRScheduler]
@@ -143,6 +144,13 @@ def add_model_arguments(parser: argparse.ArgumentParser):
         help="Number of attention heads in the zipformer encoder layers: a single int or comma-separated list.",
     )
 
+    parser.add_argument(
+        "--feature-dim",
+        type=int,
+        default=80,
+        help="Dim of fbank feature.",
+    )
+    
     parser.add_argument(
         "--encoder-dim",
         type=str,
@@ -949,8 +957,14 @@ def compute_loss(
         values >= 1.0 are fully warmed up and have all modules present.
     """
     device = model.device if isinstance(model, DDP) else next(model.parameters()).device
-    audio = batch["audio"].to(device)
-    padding_mask = batch["padding_mask"].to(device)
+    feature = batch["inputs"]
+    # at entry, feature is (N, T, C)
+    assert feature.ndim == 3
+    feature = feature.to(device)
+
+    supervisions = batch["supervisions"]
+    feature_lens = supervisions["num_frames"].to(device)
+    padding_mask = make_pad_mask(feature_lens)
 
     batch_idx_train = params.batch_idx_train
     warm_step = params.warm_step
@@ -961,7 +975,7 @@ def compute_loss(
 
     with torch.set_grad_enabled(is_training):
         simple_loss, pruned_loss, ctc_loss, num_frames = model(
-            x=audio,
+            x=feature,
             padding_mask=padding_mask,
             y=y,
             prune_range=params.prune_range,
@@ -1350,13 +1364,8 @@ def run(rank, world_size, args):
     if params.inf_check:
         register_inf_check_hooks(model)
 
-    librispeech = LibriSpeechAsrDataModule(args)
-
-    train_cuts = (
-        librispeech.train_all_shuf_cuts()
-        if params.full_libri
-        else librispeech.train_clean_100_cuts()
-    )
+    vietnamese = VietnameseAsrDataModule(args)
+    train_cuts = vietnamese.train_cuts()
 
     def remove_short_and_long_utt(c: Cut):
         # Keep only utterances with duration between 1 second and 20 seconds
@@ -1367,10 +1376,30 @@ def run(rank, world_size, args):
         # You should use ../local/display_manifest_statistics.py to get
         # an utterance duration distribution for your dataset to select
         # the threshold
-        if c.duration < 1.0 or c.duration > 20.0:
-            # logging.warning(
-            #     f"Exclude cut with ID {c.id} from training. Duration: {c.duration}"
-            # )
+        if c.duration < 0.5 or c.duration > 20.0:
+            logging.warning(
+                f"Exclude cut with ID {c.id} from training. Duration: {c.duration}"
+            )
+            return False
+
+        # In pruned RNN-T, we require that T >= S
+        # where T is the number of feature frames after subsampling
+        # and S is the number of tokens in the utterance
+
+        # In ./zipformer.py, the conv module uses the following expression
+        # for subsampling
+        T = ((c.num_frames - 7) // 2 + 1) // 2
+        tokens = sp.encode(c.supervisions[0].text, out_type=str)
+
+        if T < len(tokens):
+            logging.warning(
+                f"Exclude cut with ID {c.id} from training. "
+                f"Number of frames (before subsampling): {c.num_frames}. "
+                f"Number of frames (after subsampling): {T}. "
+                f"Text: {c.supervisions[0].text}. "
+                f"Tokens: {tokens}. "
+                f"Number of tokens: {len(tokens)}"
+            )
             return False
 
         return True
@@ -1384,18 +1413,15 @@ def run(rank, world_size, args):
     else:
         sampler_state_dict = None
 
-    train_dl = librispeech.train_dataloaders(
+    train_dl = vietnamese.train_dataloaders(
         train_cuts,
-        do_normalize=params.do_normalize,
         sampler_state_dict=sampler_state_dict,
     )
 
-    valid_cuts = librispeech.dev_clean_cuts()
-    valid_cuts += librispeech.dev_other_cuts()
+    valid_cuts = vietnamese.dev_cuts()
 
-    valid_dl = librispeech.valid_dataloaders(
+    valid_dl = vietnamese.valid_dataloaders(
         valid_cuts,
-        do_normalize=params.do_normalize,
     )
 
     if params.sanity_check and not params.print_diagnostics:
@@ -1481,8 +1507,8 @@ def display_and_save_batch(
     logging.info(f"Saving batch to {filename}")
     torch.save(batch, filename)
 
-    audio = batch["audio"]
-    logging.info(f"audio shape: {audio.shape}")
+    feature = batch["inputs"]
+    logging.info(f"feature shape: {feature.shape}")
 
     y = sp.encode(batch["supervisions"]["text"], out_type=int)
     num_tokens = sum(len(i) for i in y)
@@ -1533,7 +1559,7 @@ def scan_pessimistic_batches_for_oom(
 
 def main():
     parser = get_parser()
-    LibriSpeechAsrDataModule.add_arguments(parser)
+    VietnameseAsrDataModule.add_arguments(parser)
     args = parser.parse_args()
     args.exp_dir = Path(args.exp_dir)
 

@@ -1,5 +1,5 @@
 # Copyright      2021  Piotr Żelasko
-# Copyright      2024  Xiaomi Corporation     (Author: Yifan Yang)
+# Copyright      2022  Xiaomi Corporation     (Author: Mingshuang Luo)
 #
 # See ../../../../LICENSE for clarification regarding multiple authors
 #
@@ -17,15 +17,27 @@
 
 
 import argparse
+import inspect
 import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import torch
-from dataset import HubertAsrDataset
-from lhotse import CutSet, load_manifest_lazy
-from lhotse.dataset import DynamicBucketingSampler, SimpleCutSampler
+from lhotse import CutSet, Fbank, FbankConfig, load_manifest, load_manifest_lazy
+from lhotse.dataset import (  # noqa F401 for PrecomputedFeatures
+    CutConcatenate,
+    CutMix,
+    DynamicBucketingSampler,
+    K2SpeechRecognitionDataset,
+    PrecomputedFeatures,
+    SimpleCutSampler,
+    SpecAugment,
+)
+from lhotse.dataset.input_strategies import (  # noqa F401 For AudioSamples
+    AudioSamples,
+    OnTheFlyFeatures,
+)
 from lhotse.utils import fix_random_seed
 from torch.utils.data import DataLoader
 
@@ -40,9 +52,9 @@ class _SeedWorkers:
         fix_random_seed(self.seed + worker_id)
 
 
-class LibriSpeechAsrDataModule:
+class VietnameseAsrDataModule:
     """
-    DataModule for ASR experiments.
+    DataModule for k2 ASR experiments.
     It assumes there is always one train and valid dataloader,
     but there can be multiple test dataloaders (e.g. LibriSpeech test-clean
     and test-other).
@@ -51,6 +63,9 @@ class LibriSpeechAsrDataModule:
     experiments, e.g.:
     - dynamic batch size,
     - bucketing samplers,
+    - cut concatenation,
+    - augmentation,
+    - on-the-fly feature extraction
 
     This class should be derived for specific corpora used in ASR tasks.
     """
@@ -64,24 +79,19 @@ class LibriSpeechAsrDataModule:
             title="ASR data related options",
             description="These options are used for the preparation of "
             "PyTorch DataLoaders from Lhotse CutSet's -- they control the "
-            "effective batch sizes, sampling strategies.",
-        )
-        group.add_argument(
-            "--full-libri",
-            type=str2bool,
-            default=True,
-            help="When enabled use 960h LibriSpeech. " "Otherwise, use 100h subset.",
+            "effective batch sizes, sampling strategies, applied data "
+            "augmentations, etc.",
         )
 
         group.add_argument(
             "--manifest-dir",
             type=Path,
-            default=Path("data/wav"),
+            default=Path("data/fbank"),
             help="Path to directory with train/valid/test cuts.",
         )
         group.add_argument(
             "--max-duration",
-            type=float,
+            type=int,
             default=200.0,
             help="Maximum pooled recordings duration (seconds) in a "
             "single batch. You can reduce it if it causes CUDA OOM.",
@@ -101,6 +111,36 @@ class LibriSpeechAsrDataModule:
             "(you might want to increase it for larger datasets).",
         )
         group.add_argument(
+            "--concatenate-cuts",
+            type=str2bool,
+            default=False,
+            help="When enabled, utterances (cuts) will be concatenated "
+            "to minimize the amount of padding.",
+        )
+        group.add_argument(
+            "--duration-factor",
+            type=float,
+            default=1.0,
+            help="Determines the maximum duration of a concatenated cut "
+            "relative to the duration of the longest cut in a batch.",
+        )
+        group.add_argument(
+            "--gap",
+            type=float,
+            default=1.0,
+            help="The amount of padding (in seconds) inserted between "
+            "concatenated cuts. This padding is filled with noise when "
+            "noise augmentation is used.",
+        )
+        group.add_argument(
+            "--on-the-fly-feats",
+            type=str2bool,
+            default=False,
+            help="When enabled, use on-the-fly cut mixing and feature "
+            "extraction. Will drop existing precomputed feature manifests "
+            "if available.",
+        )
+        group.add_argument(
             "--shuffle",
             type=str2bool,
             default=True,
@@ -114,23 +154,64 @@ class LibriSpeechAsrDataModule:
             help="Whether to drop last batch. Used by sampler.",
         )
         group.add_argument(
+            "--return-cuts",
+            type=str2bool,
+            default=True,
+            help="When enabled, each batch will have the "
+            "field: batch['supervisions']['cut'] with the cuts that "
+            "were used to construct it.",
+        )
+
+        group.add_argument(
             "--num-workers",
             type=int,
             default=2,
             help="The number of training dataloader workers that "
             "collect the batches.",
         )
+
         group.add_argument(
-            "--do-normalize",
+            "--enable-spec-aug",
             type=str2bool,
             default=True,
-            help="whether to normalize the data",
+            help="When enabled, use SpecAugment for training dataset.",
+        )
+
+        group.add_argument(
+            "--spec-aug-time-warp-factor",
+            type=int,
+            default=80,
+            help="Used only when --enable-spec-aug is True. "
+            "It specifies the factor for time warping in SpecAugment. "
+            "Larger values mean more warping. "
+            "A value less than 1 means to disable time warp.",
+        )
+
+        group.add_argument(
+            "--enable-musan",
+            type=str2bool,
+            default=True,
+            help="When enabled, select noise from MUSAN and mix it"
+            "with training dataset. ",
+        )
+
+        group.add_argument(
+            "--input-strategy",
+            type=str,
+            default="PrecomputedFeatures",
+            help="AudioSamples or PrecomputedFeatures",
+        )
+        
+        group.add_argument(
+            "--add-vi000",
+            type=str2bool,
+            default=False,
+            help="When enabled, mix yodas_vi000 with the original vietnamese.",
         )
 
     def train_dataloaders(
         self,
         cuts_train: CutSet,
-        do_normalize: bool,
         sampler_state_dict: Optional[Dict[str, Any]] = None,
     ) -> DataLoader:
         """
@@ -140,8 +221,82 @@ class LibriSpeechAsrDataModule:
           sampler_state_dict:
             The state dict for the training sampler.
         """
+        transforms = []
+        if self.args.enable_musan:
+            logging.info("Enable MUSAN")
+            logging.info("About to get Musan cuts")
+            cuts_musan = load_manifest(self.args.manifest_dir / "musan_cuts.jsonl.gz")
+            transforms.append(
+                CutMix(cuts=cuts_musan, p=0.5, snr=(10, 20), preserve_id=True)
+            )
+        else:
+            logging.info("Disable MUSAN")
+
+        if self.args.concatenate_cuts:
+            logging.info(
+                f"Using cut concatenation with duration factor "
+                f"{self.args.duration_factor} and gap {self.args.gap}."
+            )
+            # Cut concatenation should be the first transform in the list,
+            # so that if we e.g. mix noise in, it will fill the gaps between
+            # different utterances.
+            transforms = [
+                CutConcatenate(
+                    duration_factor=self.args.duration_factor, gap=self.args.gap
+                )
+            ] + transforms
+
+        input_transforms = []
+        if self.args.enable_spec_aug:
+            logging.info("Enable SpecAugment")
+            logging.info(f"Time warp factor: {self.args.spec_aug_time_warp_factor}")
+            # Set the value of num_frame_masks according to Lhotse's version.
+            # In different Lhotse's versions, the default of num_frame_masks is
+            # different.
+            num_frame_masks = 10
+            num_frame_masks_parameter = inspect.signature(
+                SpecAugment.__init__
+            ).parameters["num_frame_masks"]
+            if num_frame_masks_parameter.default == 1:
+                num_frame_masks = 2
+            logging.info(f"Num frame mask: {num_frame_masks}")
+            input_transforms.append(
+                SpecAugment(
+                    time_warp_factor=self.args.spec_aug_time_warp_factor,
+                    num_frame_masks=num_frame_masks,
+                    features_mask_size=27,
+                    num_feature_masks=2,
+                    frames_mask_size=100,
+                )
+            )
+        else:
+            logging.info("Disable SpecAugment")
+
         logging.info("About to create train dataset")
-        train = HubertAsrDataset(do_normalize=do_normalize)
+        train = K2SpeechRecognitionDataset(
+            input_strategy=eval(self.args.input_strategy)(),
+            cut_transforms=transforms,
+            input_transforms=input_transforms,
+            return_cuts=self.args.return_cuts,
+        )
+
+        if self.args.on_the_fly_feats:
+            # NOTE: the PerturbSpeed transform should be added only if we
+            # remove it from data prep stage.
+            # Add on-the-fly speed perturbation; since originally it would
+            # have increased epoch size by 3, we will apply prob 2/3 and use
+            # 3x more epochs.
+            # Speed perturbation probably should come first before
+            # concatenation, but in principle the transforms order doesn't have
+            # to be strict (e.g. could be randomized)
+            # transforms = [PerturbSpeed(factors=[0.9, 1.1], p=2/3)] + transforms   # noqa
+            # Drop feats to be on the safe side.
+            train = K2SpeechRecognitionDataset(
+                cut_transforms=transforms,
+                input_strategy=OnTheFlyFeatures(Fbank(FbankConfig(num_mel_bins=80))),
+                input_transforms=input_transforms,
+                return_cuts=self.args.return_cuts,
+            )
 
         if self.args.bucketing_sampler:
             logging.info("Using DynamicBucketingSampler.")
@@ -151,6 +306,8 @@ class LibriSpeechAsrDataModule:
                 shuffle=self.args.shuffle,
                 num_buckets=self.args.num_buckets,
                 drop_last=self.args.drop_last,
+                buffer_size=self.args.num_buckets * 2000,
+                shuffle_buffer_size=self.args.num_buckets * 5000
             )
         else:
             logging.info("Using SimpleCutSampler.")
@@ -181,9 +338,27 @@ class LibriSpeechAsrDataModule:
 
         return train_dl
 
-    def valid_dataloaders(self, cuts_valid: CutSet, do_normalize: bool) -> DataLoader:
+    def valid_dataloaders(self, cuts_valid: CutSet) -> DataLoader:
+        transforms = []
+        if self.args.concatenate_cuts:
+            transforms = [
+                CutConcatenate(
+                    duration_factor=self.args.duration_factor, gap=self.args.gap
+                )
+            ] + transforms
+
         logging.info("About to create dev dataset")
-        validate = HubertAsrDataset(do_normalize=do_normalize)
+        if self.args.on_the_fly_feats:
+            validate = K2SpeechRecognitionDataset(
+                cut_transforms=transforms,
+                input_strategy=OnTheFlyFeatures(Fbank(FbankConfig(num_mel_bins=80))),
+                return_cuts=self.args.return_cuts,
+            )
+        else:
+            validate = K2SpeechRecognitionDataset(
+                cut_transforms=transforms,
+                return_cuts=self.args.return_cuts,
+            )
         valid_sampler = DynamicBucketingSampler(
             cuts_valid,
             max_duration=self.args.max_duration,
@@ -200,9 +375,14 @@ class LibriSpeechAsrDataModule:
 
         return valid_dl
 
-    def test_dataloaders(self, cuts: CutSet, do_normalize: bool) -> DataLoader:
+    def test_dataloaders(self, cuts: CutSet) -> DataLoader:
         logging.debug("About to create test dataset")
-        test = HubertAsrDataset(do_normalize=do_normalize)
+        test = K2SpeechRecognitionDataset(
+            input_strategy=OnTheFlyFeatures(Fbank(FbankConfig(num_mel_bins=80)))
+            if self.args.on_the_fly_feats
+            else eval(self.args.input_strategy)(),
+            return_cuts=self.args.return_cuts,
+        )
         sampler = DynamicBucketingSampler(
             cuts,
             max_duration=self.args.max_duration,
@@ -218,70 +398,31 @@ class LibriSpeechAsrDataModule:
         return test_dl
 
     @lru_cache()
-    def train_clean_100_cuts(self) -> CutSet:
-        logging.info("About to get train-clean-100 cuts")
+    def train_cuts(self) -> CutSet:
+        logging.info("Loading zzy_vietnamese in lazy mode")
+        viet_cuts = load_manifest_lazy(
+            self.args.manifest_dir / "vietnamese_cuts_train_no_perturb.jsonl.gz"
+        )
+        if self.args.add_vi000:
+            logging.info("Loading yodas_vi000 in lazy mode")
+            vi000_cuts = load_manifest_lazy(
+            self.args.manifest_dir / "yodas_cuts_vi000.jsonl.gz"
+        )
+            return CutSet.mux(viet_cuts, vi000_cuts, weights=[len(viet_cuts), len(vi000_cuts)])
+        else:
+            return viet_cuts
+        
+
+    @lru_cache()
+    def dev_cuts(self) -> CutSet:
+        logging.info("About to get dev cuts")
         return load_manifest_lazy(
-            self.args.manifest_dir / "librispeech_cuts_train-clean-100.jsonl.gz"
+            self.args.manifest_dir / "vietnamese_cuts_dev.jsonl.gz"
         )
 
     @lru_cache()
-    def train_clean_360_cuts(self) -> CutSet:
-        logging.info("About to get train-clean-360 cuts")
+    def test_cuts(self) -> CutSet:
+        logging.info("About to get test cuts")
         return load_manifest_lazy(
-            self.args.manifest_dir / "librispeech_cuts_train-clean-360.jsonl.gz"
-        )
-
-    @lru_cache()
-    def train_other_500_cuts(self) -> CutSet:
-        logging.info("About to get train-other-500 cuts")
-        return load_manifest_lazy(
-            self.args.manifest_dir / "librispeech_cuts_train-other-500.jsonl.gz"
-        )
-
-    @lru_cache()
-    def train_all_shuf_cuts(self) -> CutSet:
-        logging.info(
-            "About to get the shuffled train-clean-100, \
-            train-clean-360 and train-other-500 cuts"
-        )
-        train_clean_100_cuts = self.train_clean_100_cuts()
-        train_clean_360_cuts = self.train_clean_360_cuts()
-        train_other_500_cuts = self.train_other_500_cuts()
-        return CutSet.mux(
-            train_clean_100_cuts,
-            train_clean_360_cuts,
-            train_other_500_cuts,
-            weights=[
-                28539,  # len(train_clean_100_cuts)
-                104014,  # len(train_clean_360_cuts)
-                148688,  # len(train_other_500_cuts)
-            ],
-        )
-
-    @lru_cache()
-    def dev_clean_cuts(self) -> CutSet:
-        logging.info("About to get dev-clean cuts")
-        return load_manifest_lazy(
-            self.args.manifest_dir / "librispeech_cuts_dev-clean.jsonl.gz"
-        )
-
-    @lru_cache()
-    def dev_other_cuts(self) -> CutSet:
-        logging.info("About to get dev-other cuts")
-        return load_manifest_lazy(
-            self.args.manifest_dir / "librispeech_cuts_dev-other.jsonl.gz"
-        )
-
-    @lru_cache()
-    def test_clean_cuts(self) -> CutSet:
-        logging.info("About to get test-clean cuts")
-        return load_manifest_lazy(
-            self.args.manifest_dir / "librispeech_cuts_test-clean.jsonl.gz"
-        )
-
-    @lru_cache()
-    def test_other_cuts(self) -> CutSet:
-        logging.info("About to get test-other cuts")
-        return load_manifest_lazy(
-            self.args.manifest_dir / "librispeech_cuts_test-other.jsonl.gz"
+            self.args.manifest_dir / "vietnamese_cuts_test.jsonl.gz"
         )

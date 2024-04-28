@@ -2,10 +2,10 @@
 set -e
 
 # config
-cut_dir="/data_a100/userhome/yangb/data/fbank"
-declare -a cut_files=("librispeech_cuts_dev-clean.jsonl.gz" "librispeech_cuts_dev-other.jsonl.gz" "librispeech_cuts_test-clean.jsonl.gz" "librispeech_cuts_test-other.jsonl.gz" "librispeech_cuts_train-clean-100.jsonl.gz" "librispeech_cuts_train-clean-360.jsonl.gz" "librispeech_cuts_train-other-500.jsonl.gz")
-kmeans="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/librispeech_fbank_kms500_norm/kmeans.bin"
-output_dir="/data_a100/userhome/yangb/data/kms"
+cut_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/fbank"
+declare -a cut_files=("vietnamese_cuts_train_no_perturb.jsonl.gz" "vietnamese_cuts_dev.jsonl.gz" "vietnamese_cuts_test.jsonl.gz")
+kmeans="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_fbank_kms500/kmeans.bin"
+output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_fbank_kms_500"
 mkdir -p $output_dir
 num_workers=20
 

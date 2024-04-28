@@ -192,27 +192,3 @@ class HubertDataset(torch.utils.data.Dataset):
         targets = self.collate_tokens(targets, pad_idx=pad, left_pad=False)
         return targets, lengths
 
-
-if __name__ == "__main__":
-    from lhotse import load_manifest_lazy
-    from lhotse.dataset import DynamicBucketingSampler
-    from torch.utils.data import DataLoader
-
-    dataset = HubertDataset(max_sample_size=1562)
-    cuts = load_manifest_lazy("data/fbank/librispeech_cuts_train-clean-100.jsonl.gz")
-    sampler = DynamicBucketingSampler(
-        cuts,
-        max_duration=300,
-        shuffle=False,
-    )
-    dl = DataLoader(
-        dataset,
-        batch_size=None,
-        sampler=sampler,
-        num_workers=0,
-    )
-
-    for batch_idx, batch in enumerate(dl):
-        print(batch["features"].shape)
-        print(batch["padding_mask"].shape)
-        print(batch["kmeans"].shape)

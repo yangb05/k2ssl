@@ -106,7 +106,7 @@ import k2
 import sentencepiece as spm
 import torch
 import torch.nn as nn
-from asr_datamodule import LibriSpeechAsrDataModule
+from asr_datamodule import VietnameseAsrDataModule
 from beam_search import (
     beam_search,
     fast_beam_search_nbest,
@@ -424,10 +424,12 @@ def decode_one_batch(
       the returned dict.
     """
     device = next(model.parameters()).device
-    audio = batch["audio"].to(device)
-    padding_mask = batch["padding_mask"].to(device)
+    feature = batch["inputs"].to(device)
+    supervisions = batch["supervisions"]
+    feature_lens = supervisions["num_frames"].to(device)
+    padding_mask = make_pad_mask(feature_lens)
 
-    encoder_out, encoder_out_lens = model.forward_encoder(audio, padding_mask)
+    encoder_out, encoder_out_lens = model.forward_encoder(feature, padding_mask)
 
     hyps = []
 
@@ -481,7 +483,7 @@ def decode_one_batch(
             max_contexts=params.max_contexts,
             max_states=params.max_states,
             num_paths=params.num_paths,
-            ref_texts=sp.encode(batch["supervisions"]["text"]),
+            ref_texts=sp.encode(supervisions["text"]),
             nbest_scale=params.nbest_scale,
         )
         for hyp in sp.decode(hyp_tokens):
@@ -658,7 +660,7 @@ def decode_dataset(
     results = defaultdict(list)
     for batch_idx, batch in enumerate(dl):
         texts = batch["supervisions"]["text"]
-        cut_ids = [cut.id for cut in batch["cuts"]]
+        cut_ids = [cut.id for cut in batch["supervisions"]["cut"]]
 
         hyps_dict = decode_one_batch(
             params=params,
@@ -738,7 +740,7 @@ def save_results(
 @torch.no_grad()
 def main():
     parser = get_parser()
-    LibriSpeechAsrDataModule.add_arguments(parser)
+    VietnameseAsrDataModule.add_arguments(parser)
     LmScorer.add_arguments(parser)
     args = parser.parse_args()
     args.exp_dir = Path(args.exp_dir)
@@ -974,9 +976,9 @@ def main():
         if os.path.exists(params.context_file):
             contexts = []
             for line in open(params.context_file).readlines():
-                contexts.append((sp.encode(line.strip()), 0.0))
+                contexts.append(line.strip())
             context_graph = ContextGraph(params.context_score)
-            context_graph.build(contexts)
+            context_graph.build(sp.encode(contexts))
         else:
             context_graph = None
     else:
@@ -987,38 +989,39 @@ def main():
 
     # we need cut ids to display recognition results.
     args.return_cuts = True
-    librispeech = LibriSpeechAsrDataModule(args)
+    viet = VietnameseAsrDataModule(args)
 
-    dev_clean_cuts = librispeech.dev_clean_cuts()
-    dev_other_cuts = librispeech.dev_other_cuts()
+    # dev_clean_cuts = librispeech.dev_clean_cuts()
+    # dev_other_cuts = librispeech.dev_other_cuts()
 
-    dev_clean_dl = librispeech.test_dataloaders(
-        dev_clean_cuts,
-        do_normalize=params.do_normalize,
-    )
-    dev_other_dl = librispeech.test_dataloaders(
-        dev_other_cuts,
-        do_normalize=params.do_normalize,
-    )
+    # dev_clean_dl = librispeech.test_dataloaders(
+    #     dev_clean_cuts,
+    #     do_normalize=params.do_normalize,
+    # )
+    # dev_other_dl = librispeech.test_dataloaders(
+    #     dev_other_cuts,
+    #     do_normalize=params.do_normalize,
+    # )
 
-    test_clean_cuts = librispeech.test_clean_cuts()
-    test_other_cuts = librispeech.test_other_cuts()
+    # test_clean_cuts = librispeech.test_clean_cuts()
+    # test_other_cuts = librispeech.test_other_cuts()
 
-    test_clean_dl = librispeech.test_dataloaders(
-        test_clean_cuts,
-        do_normalize=params.do_normalize,
-    )
-    test_other_dl = librispeech.test_dataloaders(
-        test_other_cuts,
-        do_normalize=params.do_normalize,
-    )
-
-    test_sets = ["dev-clean", "dev-other", "test-clean", "test-other"]
-    test_dl = [dev_clean_dl, dev_other_dl, test_clean_dl, test_other_dl]
+    # test_clean_dl = librispeech.test_dataloaders(
+    #     test_clean_cuts,
+    #     do_normalize=params.do_normalize,
+    # )
+    # test_other_dl = librispeech.test_dataloaders(
+    #     test_other_cuts,
+    #     do_normalize=params.do_normalize,
+    # )
+    test_cuts = viet.test_cuts()
+    test_dl = viet.test_dataloaders(test_cuts)
+    test_sets = ["test_25h",]
+    test_dls = [test_dl,]
     # test_sets = ["dev-clean", "dev-other"]
     # test_dl = [dev_clean_dl, dev_other_dl]
 
-    for test_set, test_dl in zip(test_sets, test_dl):
+    for test_set, test_dl in zip(test_sets, test_dls):
         results_dict = decode_dataset(
             dl=test_dl,
             params=params,

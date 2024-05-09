@@ -420,7 +420,7 @@ class HubertModel(nn.Module):
         x = x.transpose(0, 1)
 
         if features_only:
-            return {"x": x, "padding_mask": padding_mask, "features": features}
+            return {"x": x, "padding_mask": padding_mask, "features": features, "x_lens": x_lens}
 
         if not self.skip_masked:
             masked_indices = torch.logical_and(~padding_mask, mask_indices)

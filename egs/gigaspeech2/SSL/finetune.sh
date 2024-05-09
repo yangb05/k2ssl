@@ -6,9 +6,9 @@ export CUDA_VISIBLE_DEVICES="2,3,4,5,6,7"
   --start-epoch 1 \
   --use-fp16 1 \
   --exp-dir zipformer/exp_finetune_vietnamese \
-  --bpe-model data/lang_bpe_10000/bpe.model \
-  --pretrained-dir zipformer/exp_pretrain_vietnamese/epoch-100.pt \
-  --max-duration 600 \
+  --bpe-model data/lang_bpe_2000/bpe.model \
+  --pretrained-dir zipformer/exp_pretrain_vietnamese/epoch-184.pt \
+  --max-duration 1500 \
   --accum-grad 1 \
   --mask-prob 0.65 \
   --mask-channel-prob 0.5 \

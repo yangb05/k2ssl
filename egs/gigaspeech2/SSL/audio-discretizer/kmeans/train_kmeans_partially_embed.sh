@@ -1,10 +1,12 @@
-num=2000
-embed_files="/data_a100/userhome/yangb/data/fbank/librispeech_embed_train-clean-100.npy,/data_a100/userhome/yangb/data/fbank/librispeech_embed_train-clean-360.npy,/data_a100/userhome/yangb/data/fbank/librispeech_embed_train-other-500.npy"
-output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/librispeech_embed_kms2000"
+num=500
+batch_size=1000000
+embed_files="/data_a100/userhome/yangb/data/fbank/vietnamese_embed_train.npy"
+output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_embed_kms500"
 
 . /mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/audio-discretizer/utils/parse_options.sh || exit 1
 
 echo "num: ${num}"
+echo "batch_size: ${batch_size}"
 echo "embed_files: ${embed_files}"
 echo "output_dir: ${output_dir}"
 mkdir -p ${output_dir}
@@ -21,6 +23,6 @@ echo "log_path: ${log_path}"
         --model-path $model_path \
         --n-clusters $num \
         --percent 1.0 \
-        --batch-size 10000 \
+        --batch-size $batch_size \
         --init "k-means++" \
         --layer-norm

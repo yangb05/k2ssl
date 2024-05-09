@@ -2,8 +2,8 @@ export CUDA_VISIBLE_DEVICES="2,3,4,5,6,7"
 
 ./zipformer/pretrain.py \
   --world-size 6 \
-  --num-epochs 100 \
-  --start-epoch 1 \
+  --num-epochs 351 \
+  --start-epoch 120 \
   --use-fp16 1 \
   --exp-dir zipformer/exp_pretrain_vietnamese \
   --max-duration 1500 \

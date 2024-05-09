@@ -10,7 +10,6 @@ os.environ['MKL_NUM_THREADS'] = f"{default_n_threads}"
 os.environ['OMP_NUM_THREADS'] = f"{default_n_threads}"
 
 import joblib
-import kaldiio
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 from tqdm import tqdm
@@ -26,9 +25,9 @@ def get_args():
     parser.add_argument("--percent", default=1, type=float)
     parser.add_argument("--init", default="k-means++", type=str)
     parser.add_argument("--max-iter", default=100, type=int)
-    parser.add_argument("--batch-size", default=10000, type=int)
+    parser.add_argument("--batch-size", default=100000, type=int)
     parser.add_argument("--tol", default=0.0, type=float)
-    parser.add_argument("--max-no-improvement", default=100, type=int)
+    parser.add_argument("--max-no-improvement", default=10, type=int)
     parser.add_argument("--n-init", default=20, type=int)
     parser.add_argument("--reassignment-ratio", default=0.0, type=float)
     parser.add_argument("--layer-norm", action="store_true")
@@ -45,20 +44,22 @@ def layer_norm(x: np.ndarray, eps=1e-5) -> np.ndarray:
 
 def load_feats(cut_file, part_size, max_iter, percent=1.0, apply_layer_norm=False, seed=42):
     random.seed(seed)
-    cutset = CutSet.from_file(cut_file)
-    if percent > 0 and percent < 1:
-        sampled_len = int(len(cutset) * percent)
-        cutset = cutset.sample(n_cuts=sampled_len)
-    chunks = cutset.split(num_splits=len(cutset)//part_size)
-    for chunk in chunks:
-        part_feats = []
-        for cut in chunk:
-            feat = cut.load_features()
-            if apply_layer_norm:
-                feat = layer_norm(feat)
-            part_feats.append(feat)
-        part_feats = np.concatenate(part_feats, axis=0)
-        yield part_feats
+    for i in range(max_iter):
+        cutset = CutSet.from_file(cut_file)
+        cutset = cutset.shuffle(rng=random)
+        if percent > 0 and percent < 1:
+            sampled_len = int(len(cutset) * percent)
+            cutset = cutset.sample(n_cuts=sampled_len)
+        chunks = cutset.split(num_splits=len(cutset)//part_size)
+        for chunk in chunks:
+            part_feats = []
+            for cut in chunk:
+                feat = cut.load_features()
+                if apply_layer_norm:
+                    feat = layer_norm(feat)
+                part_feats.append(feat)
+            part_feats = np.concatenate(part_feats, axis=0)
+            yield part_feats
 
 
 def main(args):

@@ -125,11 +125,10 @@ class AsrModel(nn.Module):
         encoder_outputs = self.encoder(
             source=x,
             padding_mask=padding_mask,
-            mask=self.encoder.training,
+            mask=False,
             features_only=True
         )
-        encoder_out, padding_mask = encoder_outputs['x'], encoder_outputs['padding_mask']
-        encoder_out_lens = torch.sum(~padding_mask, dim=1)
+        encoder_out, encoder_out_lens = encoder_outputs['x'], encoder_outputs['x_lens']
         assert torch.all(encoder_out_lens > 0), encoder_out_lens
 
         return encoder_out, encoder_out_lens

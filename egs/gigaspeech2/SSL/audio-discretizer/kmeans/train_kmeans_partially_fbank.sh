@@ -1,10 +1,12 @@
 num=500
+batch_size=100000
 cut_file="/mgData2/yangb/icefall/egs/vietnamese/ASR/data/fbank/vietnamese_cuts_train_no_perturb.jsonl.gz"
-output_dir="data/vietnamese_fbank_kms500"
+output_dir="data/vietnamese_fbank_kms500_bs_100000"
 
 . /mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/audio-discretizer/utils/parse_options.sh || exit 1
 
 echo "num: ${num}"
+echo "batch_size: ${batch_size}"
 echo "cut_file: ${cut_file}"
 echo "output_dir: ${output_dir}"
 mkdir -p ${output_dir}
@@ -21,6 +23,6 @@ echo "log_path: ${log_path}"
         --model-path $model_path \
         --n-clusters $num \
         --percent 1.0 \
-        --batch-size 10000 \
+        --batch-size $batch_size \
         --init "k-means++" \
         --layer-norm

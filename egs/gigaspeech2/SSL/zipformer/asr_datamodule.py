@@ -399,9 +399,9 @@ class VietnameseAsrDataModule:
 
     @lru_cache()
     def train_cuts(self) -> CutSet:
-        logging.info("Loading zzy_vietnamese in lazy mode")
+        logging.info("Loading zzy_vietnamese 284h in lazy mode")
         viet_cuts = load_manifest_lazy(
-            self.args.manifest_dir / "vietnamese_cuts_train_no_perturb.jsonl.gz"
+            self.args.manifest_dir / "vietnamese_284h_cuts_train_no_perturb.jsonl.gz"
         )
         if self.args.add_vi000:
             logging.info("Loading yodas_vi000 in lazy mode")

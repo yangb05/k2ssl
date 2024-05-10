@@ -50,8 +50,7 @@ def layer_norm(x: np.ndarray, eps=1e-5) -> np.ndarray:
 
 
 def kms_decode(cut):
-    embed = cut_embeds[cut.id]
-    embed = layer_norm(embed)   
+    embed = cut_embeds[cut.id] 
     pred = kmeans_model.predict(embed)
     pred = ' '.join([str(l) for l in pred])
     return cut, pred

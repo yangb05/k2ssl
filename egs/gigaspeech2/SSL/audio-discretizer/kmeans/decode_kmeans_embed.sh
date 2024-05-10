@@ -5,7 +5,7 @@ set -e
 cut_dir="/mgData2/yangb/icefall/egs/vietnamese/ASR/data/fbank"
 declare -a cut_files=("vietnamese_cuts_train_no_perturb.jsonl.gz" "vietnamese_cuts_test.jsonl.gz" "vietnamese_cuts_dev.jsonl.gz")
 kmeans="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_embed_kms500/kmeans.bin"
-output_dir="/data_a100/userhome/yangb/data/fbank/vietnamese_embed_kms500"
+output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_embed_kms500"
 mkdir -p $output_dir
 num_workers=20
 
@@ -25,6 +25,5 @@ do
         --embed-file ${cut_dir}/${embed_file} \
         --kmeans $kmeans \
         --output-file ${output_dir}/${cut_file} \
-        --num-workers $num_workers \
-        --layer-norm
+        --num-workers $num_workers
 done

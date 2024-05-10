@@ -1,11 +1,10 @@
-export CUDA_VISIBLE_DEVICES="2,3,4,5,6,7"
+export CUDA_VISIBLE_DEVICES="0,1,2,3,4,5"
 
 ./zipformer/pretrain.py \
   --world-size 6 \
   --num-epochs 351 \
-  --start-epoch 120 \
   --use-fp16 1 \
-  --exp-dir zipformer/exp_pretrain_vietnamese \
+  --exp-dir zipformer/exp_pretrain_vietnamese_embed_label \
   --max-duration 1500 \
   --accum-grad 1 \
   --do-normalize 0 \

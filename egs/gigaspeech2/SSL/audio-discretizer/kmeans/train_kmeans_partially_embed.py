@@ -104,4 +104,5 @@ if __name__ == "__main__":
     )
     args = get_args()
     logging.info(str(args))
-    main(args)
+    # main(args)
+    load_embed("/data_a100/userhome/yangb/data/fbank/vietnamese_embed_train_no_perturb.npy")

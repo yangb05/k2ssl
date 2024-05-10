@@ -1,0 +1,65 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL",
+            "env": {"CUDA_VISIBLE_DEVICES":"1"},
+            "args": [
+                // train_kms
+                // "--embed-files=/data_a100/userhome/yangb/data/fbank/librispeech_embed_train-clean-100.npy,/data_a100/userhome/yangb/data/fbank/librispeech_embed_train-clean-360.npy,/data_a100/userhome/yangb/data/fbank/librispeech_embed_train-other-500.npy",
+                // "--model-path=/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/librispeech_embed_kms500_norm/kmeans.bin",
+                // "--n-clusters=500",
+                // "--layer-norm"
+                // decode_kms
+                // "--embed-file=/data_a100/userhome/yangb/data/fbank/librispeech_embed_train-clean-100.npy",
+                // "--cut-file=/data_a100/userhome/yangb/data/fbank/librispeech_cuts_train-clean-100.jsonl.gz",
+                // "--kmeans=/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/embed_kms100/kmeans_musan.bin",
+                // "--output-file=/data_a100/userhome/yangb/data/kms_test/librispeech_cuts_train-clean-100.jsonl.gz",
+                // "--num-workers=20",
+                // "--layer-norm"
+                //pretrain
+                "--world-size=1",
+                "--num-epochs=351",
+                "--start-epoch=1",
+                "--use-fp16=1",
+                "--exp-dir=zipformer/exp_pretrain_test",
+                "--max-duration=600",
+                "--accum-grad=1",
+                "--do-normalize=0",
+                "--mask-prob=0.8",
+                "--dropout-input=0.1",
+                "--dropout-features=0.1",
+                "--untie-final-proj=1",
+                "--num-encoder-layers=2,2,3,4,3,2",
+                "--feedforward-dim=512,768,1024,1536,1024,768",
+                "--encoder-dim=192,256,448,768,448,192",
+                "--encoder-unmasked-dim=192,192,256,256,256,192",
+                "--base-lr=0.045"
+                //finetune
+                // "--world-size=1",
+                // "--num-epochs=30",
+                // "--start-epoch=1",
+                // "--use-fp16=1",
+                // "--exp-dir=zipformer/exp_finetune",
+                // "--bpe-model=data/lang_bpe_10000/bpe.model",
+                // "--pretrained-dir=zipformer/exp_pretrain_vietnamese/epoch-100.pt",
+                // "--max-duration=600",
+                // "--accum-grad=1",
+                // "--feature-grad-mult=0.0",
+                // "--num-encoder-layers=2,2,3,4,3,2",
+                // "--feedforward-dim=512,768,1024,1536,1024,768",
+                // "--encoder-dim=192,256,448,768,448,192",
+                // "--encoder-unmasked-dim=192,192,256,256,256,192",
+                // "--base-lr=0.045"
+            ]
+        }
+    ]
+}

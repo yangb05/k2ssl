@@ -1,7 +1,7 @@
 num=500
-batch_size=1000000
-embed_files="/data_a100/userhome/yangb/data/fbank/vietnamese_embed_train.npy"
-output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_embed_kms500"
+batch_size=100000
+embed_files="/data_a100/userhome/yangb/data/fbank/vietnamese_embed_train_no_perturb.npy"
+output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_embed_kms500_bs_100000"
 
 . /mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/audio-discretizer/utils/parse_options.sh || exit 1
 
@@ -24,5 +24,4 @@ echo "log_path: ${log_path}"
         --n-clusters $num \
         --percent 1.0 \
         --batch-size $batch_size \
-        --init "k-means++" \
-        --layer-norm
+        --init "k-means++"

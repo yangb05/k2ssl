@@ -76,7 +76,7 @@ class VietnameseDataModule:
         group.add_argument(
             "--manifest-dir",
             type=Path,
-            default=Path("/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_fbank_kms_500"),
+            default=Path("data/vietnamese_embed_kms500"),
             help="Path to directory with train/valid/test cuts.",
         )
         group.add_argument(

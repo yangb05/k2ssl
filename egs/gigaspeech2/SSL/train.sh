@@ -2,10 +2,9 @@ export CUDA_VISIBLE_DEVICES="6"
 
 ./zipformer/finetune.py \
   --world-size 1 \
-  --num-epochs 50 \
-  --start-epoch 1 \
+  --num-epochs 60 \
   --use-fp16 1 \
-  --exp-dir zipformer/exp_finetune_vietnamese_directly \
+  --exp-dir zipformer/exp_finetune_vietnamese_ds \
   --bpe-model data/lang_bpe_2000/bpe.model \
   --max-duration 2000 \
   --accum-grad 1 \

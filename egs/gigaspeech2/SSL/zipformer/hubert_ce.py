@@ -273,7 +273,7 @@ class HubertModel(nn.Module):
         self.mask_emb = nn.Parameter(torch.FloatTensor(encoder_input_dim).uniform_())
 
         self.encoder = Zipformer2(
-            output_downsampling_factor=1,
+            output_downsampling_factor=2,
             downsampling_factor=_to_int_tuple(cfg.downsampling_factor),
             num_encoder_layers=_to_int_tuple(cfg.num_encoder_layers),
             encoder_dim=_to_int_tuple(cfg.encoder_dim),

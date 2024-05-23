@@ -243,9 +243,10 @@ class HubertModel(nn.Module):
         )
         # feature_ds_rate of Conv2dSubsampling
         feature_ds_rate = 2
-        self.feat2tar_ratio = (
-            cfg.label_rate * feature_ds_rate / cfg.sample_rate
-        )
+        # self.feat2tar_ratio = (
+        #     cfg.label_rate * feature_ds_rate / cfg.sample_rate
+        # )
+        self.feat2tar_ratio = 1
         encoder_input_dim = _to_int_tuple(cfg.encoder_dim)[0]
         encoder_output_dim = max(_to_int_tuple(cfg.encoder_dim))
 
@@ -273,7 +274,7 @@ class HubertModel(nn.Module):
         self.mask_emb = nn.Parameter(torch.FloatTensor(encoder_input_dim).uniform_())
 
         self.encoder = Zipformer2(
-            output_downsampling_factor=2,
+            output_downsampling_factor=1,
             downsampling_factor=_to_int_tuple(cfg.downsampling_factor),
             num_encoder_layers=_to_int_tuple(cfg.num_encoder_layers),
             encoder_dim=_to_int_tuple(cfg.encoder_dim),

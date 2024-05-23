@@ -1,8 +1,10 @@
-export CUDA_VISIBLE_DEVICES="6"
+export CUDA_VISIBLE_DEVICES="3,5,6"
 
 ./zipformer/finetune.py \
-  --world-size 1 \
-  --num-epochs 60 \
+  --world-size 3 \
+  --num-epochs 50 \
+  --lr-epochs 35 \
+  --lr-batches 5000 \
   --use-fp16 1 \
   --exp-dir zipformer/exp_finetune_vietnamese_ds \
   --bpe-model data/lang_bpe_2000/bpe.model \
@@ -17,4 +19,4 @@ export CUDA_VISIBLE_DEVICES="6"
   --encoder-dim 192,256,448,768,448,192 \
   --encoder-unmasked-dim 192,192,256,256,256,192 \
   --base-lr 0.045 \
-  --master-port 12356
+  --master-port 12357

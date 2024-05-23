@@ -517,12 +517,12 @@ def get_parser():
         """,
     )
 
-    # parser.add_argument(
-    #     "--pretrained-dir",
-    #     type=str,
-    #     help="""The pretrained model dir.
-    #     It specifies the directory where the pretrained checkpoint is saved.""",
-    # )
+    parser.add_argument(
+        "--pretrained-dir",
+        type=str,
+        help="""The pretrained model dir.
+        It specifies the directory where the pretrained checkpoint is saved.""",
+    )
 
     parser.add_argument(
         "--bpe-model",

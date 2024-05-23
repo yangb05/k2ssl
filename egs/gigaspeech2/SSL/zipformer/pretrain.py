@@ -197,7 +197,7 @@ def add_model_arguments(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--label-rate",
         type=float,
-        default=50,
+        default=100,
     )
 
     parser.add_argument(

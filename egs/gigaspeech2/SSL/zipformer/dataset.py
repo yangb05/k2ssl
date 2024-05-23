@@ -16,6 +16,7 @@
 
 import sys
 from typing import Any, Dict, Optional
+from collections import Counter
 
 import numpy as np
 import torch
@@ -89,11 +90,15 @@ class HubertDataset(torch.utils.data.Dataset):
         )
 
         kmeans = [cut.custom["kmeans"] for cut in cuts]
+        # kmeans = [
+        #     torch.tensor([int(item) for item in label.split()], dtype=torch.int64)
+        #     for label in kmeans
+        # ]
         kmeans = [
-            torch.tensor([int(item) for item in label.split()], dtype=torch.int64)
+            [int(item) for item in label.split()]
             for label in kmeans
         ]
-        kmeans, kmeans_lens = self.collater_frm_label(kmeans, feature_size, feature_starts)
+        kmeans, kmeans_lens = self.collater_frm_label2(kmeans, feature_size, feature_starts)
 
         return {
             "cuts": cuts,
@@ -191,4 +196,37 @@ class HubertDataset(torch.utils.data.Dataset):
         lengths = torch.LongTensor([len(t) for t in targets])
         targets = self.collate_tokens(targets, pad_idx=pad, left_pad=False)
         return targets, lengths
+    
+    def collater_frm_label2(self, targets, feature_size, feature_starts):
+        # 找出与输入模型的 fbank 一一对应的 label，然后模拟 Conv2dSubsampling 对 label 进行下采样
+        label_rate = self.label_rate
+        pad = self.num_classes[0] - 1
+        assert label_rate > 0
+        s2f = label_rate / self.sample_rate
+        frm_starts = [int(round(s * s2f)) for s in feature_starts]
+        frm_size = int(round(feature_size * s2f))
+        if not self.pad_feature:
+            rem_size = [len(t) - s for t, s in zip(targets, frm_starts)]
+            frm_size = min(frm_size, *rem_size)
+        targets = [t[s : s + frm_size] for t, s in zip(targets, frm_starts)]
 
+        def simulate_Conv2dSubsampling(pred):
+            def subsampling(pred, kernel_size, stride):
+                new_pred = []
+                for i in range(0, len(pred), stride):
+                    if i + kernel_size <= len(pred): # 卷积无填充，故丢弃不满足 kernel_size 的 pred
+                        kernel = pred[i:i+kernel_size]
+                        pred2count = Counter(kernel)
+                        new_pred.append(pred2count.most_common(1)[0][0]) # 选择 kernel_size 内出现次数最多的 pred 作为 new_pred
+                assert len(new_pred) == (len(pred) -(kernel_size - 1) - 1) // stride + 1, print(f"length after subsampling: {len(new_pred)}")
+                return new_pred
+            pred1 = subsampling(pred, 3, 1)
+            pred2 = subsampling(pred1, 3, 2)
+            pred3 = subsampling(pred2, 3, 1)
+            assert len(pred3) == (len(pred) - 7) // 2, print(f"The lengh of subsampled pred: {len(pred3)}")
+            return torch.tensor(pred3, dtype=torch.int64) 
+        
+        targets = [simulate_Conv2dSubsampling(t) for t in targets]
+        lengths = torch.LongTensor([len(t) for t in targets])
+        targets = self.collate_tokens(targets, pad_idx=pad, left_pad=False)
+        return targets, lengths

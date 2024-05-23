@@ -76,7 +76,7 @@ class VietnameseDataModule:
         group.add_argument(
             "--manifest-dir",
             type=Path,
-            default=Path("data/vietnamese_embed_kms500"),
+            default=Path("data/vietnamese_fbank_kms500_bs_1000000"),
             help="Path to directory with train/valid/test cuts.",
         )
         group.add_argument(
@@ -267,7 +267,7 @@ class VietnameseDataModule:
 
     @lru_cache()
     def train_cuts(self) -> CutSet:
-        logging.info("About to get viet train cuts")
+        logging.info("About to get 2277h train cuts")
         return load_manifest_lazy(
             self.args.manifest_dir / "vietnamese_cuts_train_no_perturb.jsonl.gz"
         )

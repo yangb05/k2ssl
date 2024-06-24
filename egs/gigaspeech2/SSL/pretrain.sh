@@ -5,11 +5,10 @@ export CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7"
   --num-epochs 150 \
   --start-epoch 1 \
   --use-fp16 1 \
-  --exp-dir zipformer/exp_pretrain_vietnamese_mask_0.65_label_fixed \
+  --exp-dir zipformer/exp_pretrain_vietnamese_mask_0.8_label_fixed_ds_2 \
   --max-duration 1500 \
   --accum-grad 1 \
-  --do-normalize 0 \
-  --mask-prob 0.65 \
+  --mask-prob 0.8 \
   --dropout-input 0.1 \
   --dropout-features 0.1 \
   --untie-final-proj 1 \

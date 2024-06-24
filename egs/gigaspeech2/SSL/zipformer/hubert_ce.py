@@ -242,7 +242,7 @@ class HubertModel(nn.Module):
             dropout=ScheduledFloat((0.0, 0.3), (20000.0, 0.1)),
         )
         # feature_ds_rate of Conv2dSubsampling
-        feature_ds_rate = 2
+        # feature_ds_rate = 2
         # self.feat2tar_ratio = (
         #     cfg.label_rate * feature_ds_rate / cfg.sample_rate
         # )
@@ -274,7 +274,7 @@ class HubertModel(nn.Module):
         self.mask_emb = nn.Parameter(torch.FloatTensor(encoder_input_dim).uniform_())
 
         self.encoder = Zipformer2(
-            output_downsampling_factor=1,
+            output_downsampling_factor=2,
             downsampling_factor=_to_int_tuple(cfg.downsampling_factor),
             num_encoder_layers=_to_int_tuple(cfg.num_encoder_layers),
             encoder_dim=_to_int_tuple(cfg.encoder_dim),
@@ -289,8 +289,8 @@ class HubertModel(nn.Module):
             dropout=ScheduledFloat((0.0, 0.3), (20000.0, 0.1)),
             warmup_batches=4000.0,
         )
-
-        self.layer_norm = LayerNorm(self.embed)
+        # drop layer norm
+        # self.layer_norm = LayerNorm(self.embed)
 
         self.untie_final_proj = cfg.untie_final_proj
         self.final_proj = nn.Linear(encoder_output_dim, sum(cfg.num_classes))
@@ -396,7 +396,8 @@ class HubertModel(nn.Module):
         features_pen = features.float().pow(2).mean()
 
         features = features.transpose(1, 2)
-        features = self.layer_norm(features)
+        # drop normalize
+        # features = self.layer_norm(features)
         unmasked_features = features.clone()
 
         if padding_mask is not None:

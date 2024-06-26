@@ -42,24 +42,23 @@ def layer_norm(x: np.ndarray, eps=1e-5) -> np.ndarray:
     return (x - mu) / np.sqrt(sig + eps)
 
 
-def load_feats(cut_file, part_size, max_iter, percent=1.0, apply_layer_norm=False, seed=42):
+def load_feats(cut_file, part_size, percent=1.0, apply_layer_norm=False, seed=42):
     random.seed(seed)
-    for i in range(max_iter):
-        cutset = CutSet.from_file(cut_file)
-        cutset = cutset.shuffle(rng=random)
-        if percent > 0 and percent < 1:
-            sampled_len = int(len(cutset) * percent)
-            cutset = cutset.sample(n_cuts=sampled_len)
-        chunks = cutset.split(num_splits=len(cutset)//part_size)
-        for chunk in chunks:
-            part_feats = []
-            for cut in chunk:
-                feat = cut.load_features()
-                if apply_layer_norm:
-                    feat = layer_norm(feat)
-                part_feats.append(feat)
-            part_feats = np.concatenate(part_feats, axis=0)
-            yield part_feats
+    cutset = CutSet.from_file(cut_file)
+    cutset = cutset.shuffle(rng=random)
+    if percent > 0 and percent < 1:
+        sampled_len = int(len(cutset) * percent)
+        cutset = cutset.sample(n_cuts=sampled_len)
+    chunks = cutset.split(num_splits=len(cutset)//part_size)
+    for chunk in chunks:
+        part_feats = []
+        for cut in chunk:
+            feat = cut.load_features()
+            if apply_layer_norm:
+                feat = layer_norm(feat)
+            part_feats.append(feat)
+        part_feats = np.concatenate(part_feats, axis=0)
+        yield part_feats
 
 
 def main(args):
@@ -78,7 +77,7 @@ def main(args):
     )
 
     for part_feats in load_feats(
-        args.cut_file, args.batch_size, args.max_iter, args.percent, args.layer_norm, args.seed
+        args.cut_file, args.batch_size, args.percent, args.layer_norm, args.seed
     ):
         model.partial_fit(part_feats)
         inertia = -model.score(part_feats) / len(part_feats)

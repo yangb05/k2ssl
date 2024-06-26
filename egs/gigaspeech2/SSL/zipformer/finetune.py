@@ -763,6 +763,7 @@ def get_encoder_model(params: AttributeDict) -> nn.Module:
         encoder.load_state_dict(pretrained["model"])
     else:
         encoder = HubertModel(params)
+    encoder.remove_pretraining_modules()
     return encoder
 
 

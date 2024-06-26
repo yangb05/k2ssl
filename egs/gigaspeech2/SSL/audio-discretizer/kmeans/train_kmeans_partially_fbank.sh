@@ -1,7 +1,7 @@
-num=500
+num=2000
 batch_size=100000
 cut_file="/mgData2/yangb/icefall/egs/vietnamese/ASR/data/fbank/vietnamese_cuts_train_no_perturb.jsonl.gz"
-output_dir="data/vietnamese_fbank_kms500_bs_100000"
+output_dir="data/vietnamese_fbank_kms2000_bs_100000"
 
 . /mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/audio-discretizer/utils/parse_options.sh || exit 1
 

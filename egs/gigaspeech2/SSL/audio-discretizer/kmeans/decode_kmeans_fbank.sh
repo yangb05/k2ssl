@@ -4,8 +4,8 @@ set -e
 # config
 cut_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/fbank"
 declare -a cut_files=("vietnamese_cuts_train_no_perturb.jsonl.gz" "vietnamese_cuts_dev.jsonl.gz" "vietnamese_cuts_test.jsonl.gz")
-kmeans="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_fbank_kms500_bs_1000000/kmeans.bin"
-output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_fbank_kms500_bs_1000000"
+kmeans="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_fbank_kms2000_bs_100000/kmeans.bin"
+output_dir="/data_a100/userhome/yangb/data/fbank/viet_fbank_kms2000_100000"
 mkdir -p $output_dir
 num_workers=20
 

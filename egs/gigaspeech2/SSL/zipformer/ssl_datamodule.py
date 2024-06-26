@@ -76,7 +76,7 @@ class VietnameseDataModule:
         group.add_argument(
             "--manifest-dir",
             type=Path,
-            default=Path("data/vietnamese_fbank_kms500_bs_1000000"),
+            default=Path("/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/viet_fbank_kms2000_100000"),
             help="Path to directory with train/valid/test cuts.",
         )
         group.add_argument(
@@ -267,7 +267,7 @@ class VietnameseDataModule:
 
     @lru_cache()
     def train_cuts(self) -> CutSet:
-        logging.info("About to get 2277h train cuts")
+        logging.info(f"About to get 2277h train cuts from {self.args.manifest_dir}")
         return load_manifest_lazy(
             self.args.manifest_dir / "vietnamese_cuts_train_no_perturb.jsonl.gz"
         )
@@ -308,7 +308,7 @@ class VietnameseDataModule:
 
     @lru_cache()
     def dev_cuts(self) -> CutSet:
-        logging.info("About to get viet dev cuts")
+        logging.info(f"About to get viet dev cuts from {self.args.manifest_dir}")
         return load_manifest_lazy(
             self.args.manifest_dir / "vietnamese_cuts_dev.jsonl.gz"
         )
@@ -322,7 +322,7 @@ class VietnameseDataModule:
 
     @lru_cache()
     def test_cuts(self) -> CutSet:
-        logging.info("About to get viet test cuts")
+        logging.info(f"About to get viet test cuts from {self.args.manifest_dir}")
         return load_manifest_lazy(
             self.args.manifest_dir / "vietnamese_cuts_test.jsonl.gz"
         )

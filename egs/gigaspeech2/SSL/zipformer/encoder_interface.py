@@ -1,1 +1,1 @@
-../../../librispeech/ASR/zipformer/encoder_interface.py
+../../../librispeech/ASR/transducer_stateless/encoder_interface.py

@@ -410,7 +410,7 @@ def add_model_arguments(parser: argparse.ArgumentParser):
         "--num-classes",
         type=int,
         nargs="*",
-        default=[504],
+        default=[2004],
         help="""num class, a little larger than the number of cluster,
         the largest is for padding, 
         and the value should be the multiple of 4, for faster computation""",

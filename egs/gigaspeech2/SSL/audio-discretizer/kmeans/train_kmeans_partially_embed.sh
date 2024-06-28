@@ -1,7 +1,7 @@
-num=500
-batch_size=100000
-embed_files="/data_a100/userhome/yangb/data/fbank/vietnamese_embed_train_no_perturb.npy"
-output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/vietnamese_embed_kms500_bs_100000"
+num=2000
+batch_size=10000
+embed_files="/data_a100/userhome/yangb/data/hidden_states/viet_220h.npy"
+output_dir="/mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/data/viet_hidden_states_kms2000_bs10000"
 
 . /mgData2/yangb/icefall-ssl/egs/gigaspeech2/SSL/audio-discretizer/utils/parse_options.sh || exit 1
 

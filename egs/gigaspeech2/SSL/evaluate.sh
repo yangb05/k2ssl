@@ -1,8 +1,8 @@
 export CUDA_VISIBLE_DEVICES=1
-for epoch in 20 30 40 50 60 70 80 90 100; do
-  for avg in 10 20 30 40 50 60; do
+for ((epoch=20; epoch<=50; epoch+=3)); do
+  for ((avg=10; avg<=$epoch; avg+=3)); do
     ./zipformer/decode.py \
-      --exp-dir zipformer/exp_finetune_vietnamese_284h_label_fixed_pretrain_best-valid_mask_0.8_lr_0.04 \
+      --exp-dir zipformer/exp_finetune_vietnamese_284h_label_fixed_pretrain_best-valid_mask_0.8_bs_2000_lr_0.01 \
       --epoch $epoch \
       --avg $avg \
       --num-encoder-layers 2,2,3,4,3,2 \

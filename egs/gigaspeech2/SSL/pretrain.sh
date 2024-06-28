@@ -3,9 +3,10 @@ export CUDA_VISIBLE_DEVICES="2,3,4,5,6,7"
 ./zipformer/pretrain.py \
   --world-size 6 \
   --num-epochs 150 \
-  --start-epoch 1 \
+  --start-epoch 84 \
   --use-fp16 1 \
-  --exp-dir zipformer/exp_pretrain_vietnamese_mask_0.8_label_fixed_no_layernorm \
+  --exp-dir zipformer/exp_pretrain_vietnamese_mask_0.8_label_fixed_no_layernorm_bs_2000 \
+  --num-classes 2004 \
   --max-duration 1500 \
   --accum-grad 1 \
   --mask-prob 0.8 \

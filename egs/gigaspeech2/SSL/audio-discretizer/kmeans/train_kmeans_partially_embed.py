@@ -32,7 +32,6 @@ def get_args():
     parser.add_argument("--max-no-improvement", default=100, type=int)
     parser.add_argument("--n-init", default=20, type=int)
     parser.add_argument("--reassignment-ratio", default=0.0, type=float)
-    parser.add_argument("--epochs", default=5, type=int)
     parser.add_argument("--layer-norm", action="store_true")
     args = parser.parse_args()
     return args
@@ -86,15 +85,14 @@ def main(args):
         n_init=args.n_init,
         reassignment_ratio=args.reassignment_ratio,
     )
-    for _ in range(args.epochs):
-        for part_embeds in load_embeds(
-            args.embed_files, args.batch_size, args.percent, args.layer_norm, args.seed
-        ):
-            model.partial_fit(part_embeds)
-            inertia = -model.score(part_embeds) / len(part_embeds)
-            logging.info(f"Total inertia: {inertia:.5f}")
+    for part_embeds in load_embeds(
+        args.embed_files, args.batch_size, args.percent, args.layer_norm, args.seed
+    ):
+        model.partial_fit(part_embeds)
+        inertia = -model.score(part_embeds) / len(part_embeds)
+        logging.info(f"Total inertia: {inertia:.5f}")
 
-        joblib.dump(model, args.model_path)
+    joblib.dump(model, args.model_path)
 
 
 if __name__ == "__main__":
@@ -104,5 +102,4 @@ if __name__ == "__main__":
     )
     args = get_args()
     logging.info(str(args))
-    # main(args)
-    load_embed("/data_a100/userhome/yangb/data/fbank/vietnamese_embed_train_no_perturb.npy")
+    main(args)
